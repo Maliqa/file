@@ -129,6 +129,7 @@ def add_project():
                     ))
                     conn.commit()
                 st.success("✅ Project added successfully!")
+                st.rerun()
             else:
                 st.error("⚠️ Please fill all required fields (*)")
 
@@ -196,6 +197,7 @@ def delete_project(project_id):
                 cursor.execute("DELETE FROM projects WHERE id=?", (project_id,))
                 conn.commit()
             st.success("✅ Project and all related files deleted successfully!")
+            st.rerun()
     else:
         st.error("⚠️ Project not found")
 
@@ -266,7 +268,31 @@ def view_projects_kanban():
         st.warning("No projects available")
         return
     
-    selected_year = st.selectbox("Filter Year", available_years, index=len(available_years)-1)
+    # Tahun sekarang
+    current_year = datetime.now().strftime("%Y")
+    
+    # Initialize selected year
+    if 'selected_year' not in st.session_state:
+        # Default: tahun sekarang jika ada, jika tidak tahun terbaru
+        st.session_state.selected_year = current_year if current_year in available_years else available_years[0]
+    
+    # Handle jika tahun yang dipilih tidak tersedia
+    if st.session_state.selected_year not in available_years:
+        st.session_state.selected_year = available_years[0]
+    
+    # Selectbox untuk memilih tahun
+    selected_year = st.selectbox(
+        "Filter Year",
+        available_years,
+        index=available_years.index(st.session_state.selected_year),
+        key='year_selector'
+    )
+    
+    # Update session state jika tahun berubah
+    if selected_year != st.session_state.selected_year:
+        st.session_state.selected_year = selected_year
+        st.rerun()
+    
     search_term = st.text_input("🔍 Search Projects...")
     
     with sqlite3.connect('project_management.db') as conn:
@@ -300,7 +326,7 @@ def view_projects_kanban():
                     # Edit button inside the card
                     if st.button(
                         "✏️ Edit Project", 
-                        key=f"edit_btn_{project[0]}_{status}",
+                        key=f"edit_btn_{project[0]}_{status}_{selected_year}",
                         type="secondary",
                         use_container_width=True
                     ):
@@ -329,6 +355,9 @@ def view_projects_kanban():
 def manage_files():
     st.subheader("📂 Manage Project Files", divider="blue")
     
+    # Daftar ekstensi file yang diblokir
+    BLOCKED_EXTENSIONS = ['.php', '.exe', '.bat', '.sh', '.js', '.py', '.jar']
+    
     available_years = get_available_years()
     if not available_years:
         st.warning("No projects available")
@@ -354,7 +383,11 @@ def manage_files():
     selected_project_name = st.selectbox("Select Project", list(project_options.keys()))
     selected_project_id = project_options[selected_project_name]
     
-    required_files = [
+    # Tab system untuk file
+    tab1, tab2 = st.tabs(["📋 Required Documents", "📂 Additional Files"])
+    
+    with tab1:
+        required_files = [
         "Form Request",
         "Form Tim Project",
         "Form Time Schedule",
@@ -363,7 +396,7 @@ def manage_files():
         "Report"
     ]
     
-    st.markdown("### 📤 Upload Documents")
+    st.markdown("### 📤 Upload Required Documents")
     selected_category = st.selectbox("Document Type", required_files)
     uploaded_file = st.file_uploader(
         f"Choose {selected_category} file",
@@ -371,91 +404,230 @@ def manage_files():
         key=f"uploader_{selected_project_id}_{selected_category}"
     )
     
-    if st.button("⬆️ Upload") and uploaded_file:
-        with sqlite3.connect('project_management.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT file_name FROM project_files 
-                WHERE project_id=? AND file_category=?
-            """, (selected_project_id, selected_category))
-            existing_file = cursor.fetchone()
-            
-            directory = f"files/project_{selected_project_id}/"
-            os.makedirs(directory, exist_ok=True)
-            filepath = os.path.join(directory, uploaded_file.name)
-            
-            with open(filepath, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            
-            if existing_file:
-                cursor.execute("""
-                    UPDATE project_files 
-                    SET file_name=?, file_path=? 
-                    WHERE project_id=? AND file_category=?
-                """, (uploaded_file.name, filepath, selected_project_id, selected_category))
-                st.success(f"♻️ {selected_category} updated successfully!")
+    if st.button("⬆️ Upload Required Document"):
+        if not uploaded_file:
+            st.error("Please select a file")
+        else:
+            # Validasi ekstensi file
+            file_extension = os.path.splitext(uploaded_file.name.lower())[1]
+            if file_extension in BLOCKED_EXTENSIONS:
+                st.error(f"⚠️ File type {file_extension} is not allowed for security reasons")
             else:
-                cursor.execute("""
-                    INSERT INTO project_files (project_id, file_name, file_path, file_category) 
-                    VALUES (?, ?, ?, ?)
-                """, (selected_project_id, uploaded_file.name, filepath, selected_category))
-                st.success(f"✅ {selected_category} uploaded successfully!")
+                with sqlite3.connect('project_management.db') as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT file_name FROM project_files 
+                        WHERE project_id=? AND file_category=?
+                    """, (selected_project_id, selected_category))
+                    existing_file = cursor.fetchone()
+                    
+                    directory = f"files/project_{selected_project_id}/required/"
+                    os.makedirs(directory, exist_ok=True)
+                    filepath = os.path.join(directory, uploaded_file.name)
+                    
+                    with open(filepath, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                    
+                    if existing_file:
+                        cursor.execute("""
+                            UPDATE project_files 
+                            SET file_name=?, file_path=? 
+                            WHERE project_id=? AND file_category=?
+                        """, (uploaded_file.name, filepath, selected_project_id, selected_category))
+                        st.success(f"♻️ {selected_category} updated successfully!")
+                    else:
+                        cursor.execute("""
+                            INSERT INTO project_files (project_id, file_name, file_path, file_category) 
+                            VALUES (?, ?, ?, ?)
+                        """, (selected_project_id, uploaded_file.name, filepath, selected_category))
+                        st.success(f"✅ {selected_category} uploaded successfully!")
+                st.rerun()
     
-    st.markdown("### 📂 Project Documents")
+    st.markdown("### 📋 Required Documents Status")
     with sqlite3.connect('project_management.db') as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT id, file_name, file_path, file_category 
+            SELECT file_category, file_name 
             FROM project_files 
-            WHERE project_id=?
+            WHERE project_id=? AND file_category IN (
+                'Form Request', 'Form Tim Project', 
+                'Form Time Schedule', 'SPK', 'BAST', 'Report'
+            )
         """, (selected_project_id,))
-        files = cursor.fetchall()
+        existing_files = {row[0]: row[1] for row in cursor.fetchall()}
     
-    if files:
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for file in files:
-                if os.path.exists(file[2]):
-                    zipf.write(file[2], arcname=file[1])
-        
-        st.download_button(
-            label="⬇️ Download All Files (ZIP)",
-            data=zip_buffer,
-            file_name=f"{selected_project_name.replace(' ', '_')}_files.zip",
-            mime="application/zip"
-        )
-        
-        for file in files:
-            cols = st.columns([6, 1, 1])
-            with cols[0]:
-                st.markdown(f"**{file[3]}**: `{file[1]}`")
-            with cols[1]:
-                if os.path.exists(file[2]):
+    for doc in required_files:
+        status = "✅" if doc in existing_files else "❌"
+        cols = st.columns([1, 4, 2])
+        with cols[0]:
+            st.markdown(status)
+        with cols[1]:
+            st.markdown(f"**{doc}**")
+        with cols[2]:
+            if doc in existing_files:
+                file_path = f"files/project_{selected_project_id}/required/{existing_files[doc]}"
+                if os.path.exists(file_path):
                     st.download_button(
-                        label="Download",
-                        data=open(file[2], "rb").read(),
-                        file_name=file[1],
-                        mime="application/octet-stream",
-                        key=f"dl_{file[0]}"
+                        "Download",
+                        data=open(file_path, "rb").read(),
+                        file_name=existing_files[doc],
+                        key=f"dl_req_{doc}_{selected_project_id}"
                     )
                 else:
-                    st.warning("Missing")
-            with cols[2]:
-                if st.button("🗑️", key=f"del_{file[0]}"):
-                    try:
-                        os.remove(file[2])
-                        with sqlite3.connect('project_management.db') as conn:
-                            cursor = conn.cursor()
-                            cursor.execute("""
-                                DELETE FROM project_files 
-                                WHERE id=?
-                            """, (file[0],))
-                            conn.commit()
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error deleting: {e}")
-    else:
-        st.info("No documents uploaded yet")
+                    st.warning("File missing")
+    
+    with tab2:
+        st.markdown("### 🆕 Upload Additional Files")
+        
+        # Input nama file custom
+        custom_category = st.text_input("Custom File Name*", 
+                                      placeholder="e.g. Meeting Notes, Contract Draft",
+                                      help="Nama deskriptif untuk file ini")
+        
+        uploaded_custom_file = st.file_uploader(
+            f"Choose additional file for {selected_project_name} (Max 10MB)",
+            type=[
+                'pdf', 'doc', 'docx', 'xls', 'xlsx', 
+                'jpg', 'jpeg', 'png', 'txt', 'ppt', 'pptx'
+            ],
+            key=f"additional_{selected_project_id}"
+        )
+        
+        if st.button("⬆️ Upload Additional File"):
+            if not custom_category:
+                st.error("Please enter a file name")
+            elif not uploaded_custom_file:
+                st.error("Please select a file")
+            else:
+                # Validasi ekstensi file
+                file_name = uploaded_custom_file.name.lower()
+                file_extension = os.path.splitext(file_name)[1]
+                
+                if file_extension in BLOCKED_EXTENSIONS:
+                    st.error(f"⚠️ File type {file_extension} is not allowed for security reasons")
+                elif uploaded_custom_file.size > 10 * 1024 * 1024:  # 10MB limit
+                    st.error("File size exceeds 10MB limit")
+                else:
+                    # Buat folder khusus additional files
+                    directory = f"files/project_{selected_project_id}/additional/"
+                    os.makedirs(directory, exist_ok=True)
+                    
+                    # Generate safe filename
+                    safe_filename = "".join(
+                        c for c in uploaded_custom_file.name 
+                        if c.isalnum() or c in ('.', '-', '_')
+                    ).rstrip()
+                    
+                    filepath = os.path.join(directory, safe_filename)
+                    
+                    # Simpan file
+                    with open(filepath, "wb") as f:
+                        f.write(uploaded_custom_file.getbuffer())
+                    
+                    # Simpan ke database
+                    with sqlite3.connect('project_management.db') as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            INSERT INTO project_files 
+                            (project_id, file_name, file_path, file_category) 
+                            VALUES (?, ?, ?, ?)
+                        """, (
+                            selected_project_id, 
+                            safe_filename, 
+                            filepath, 
+                            f"Additional: {custom_category}"
+                        ))
+                        conn.commit()
+                    
+                    st.success(f"✅ File '{custom_category}' uploaded successfully!")
+                    st.rerun()
+        
+        # Tampilkan file tambahan yang sudah ada
+        st.markdown("### 📌 Existing Additional Files")
+        with sqlite3.connect('project_management.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, file_name, file_path, file_category 
+                FROM project_files 
+                WHERE project_id=? AND file_category LIKE 'Additional:%'
+                ORDER BY file_category
+            """, (selected_project_id,))
+            additional_files = cursor.fetchall()
+        
+        if additional_files:
+            for file in additional_files:
+                cols = st.columns([5, 1, 1])
+                with cols[0]:
+                    # Tampilkan nama custom tanpa prefix "Additional:"
+                    display_name = file[3].replace("Additional: ", "")
+                    st.markdown(f"**{display_name}**: `{file[1]}`")
+                    
+                    # Tampilkan ukuran file jika ada
+                    if os.path.exists(file[2]):
+                        size = os.path.getsize(file[2]) / 1024  # dalam KB
+                        st.caption(f"{size:.2f} KB")
+                
+                with cols[1]:
+                    if os.path.exists(file[2]):
+                        st.download_button(
+                            label="Download",
+                            data=open(file[2], "rb").read(),
+                            file_name=file[1],
+                            mime="application/octet-stream",
+                            key=f"dl_add_{file[0]}"
+                        )
+                    else:
+                        st.warning("Missing")
+                
+                with cols[2]:
+                    if st.button("🗑️", key=f"del_add_{file[0]}"):
+                        try:
+                            if os.path.exists(file[2]):
+                                os.remove(file[2])
+                            with sqlite3.connect('project_management.db') as conn:
+                                cursor = conn.cursor()
+                                cursor.execute("""
+                                    DELETE FROM project_files 
+                                    WHERE id=?
+                                """, (file[0],))
+                                conn.commit()
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error deleting: {str(e)}")
+        else:
+            st.info("No additional files uploaded yet")
+
+    st.markdown("---")
+    st.markdown("### 🗂 Download All Project Files")
+    
+    if st.button("⬇️ Download All Files as ZIP"):
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+            # Tambahkan Required Documents ke ZIP
+            required_dir = f"files/project_{selected_project_id}/required/"
+            if os.path.exists(required_dir):
+                for file in os.listdir(required_dir):
+                    file_path = os.path.join(required_dir, file)
+                    if os.path.isfile(file_path):
+                        zipf.write(file_path, arcname=f"Required Documents/{file}")
+            # Tambahkan Additional Files ke ZIP
+            additional_dir = f"files/project_{selected_project_id}/additional/"
+            if os.path.exists(additional_dir):
+                for file in os.listdir(additional_dir):
+                    file_path = os.path.join(additional_dir, file)
+                    if os.path.isfile(file_path):
+                        zipf.write(file_path, arcname=f"Additional Files/{file}") 
+            # Cek apakah ZIP berisi file
+        if zip_buffer.tell() > 0:  # Jika ada konten
+            st.download_button(
+                label="💾 Download ZIP Now",
+                data=zip_buffer,
+                file_name=f"{selected_project_name.replace(' ', '_')}_ALL_FILES.zip",
+                mime="application/zip"
+            )
+        else:
+            st.warning("No files available to download")                       
+
 
 # Initialize database
 init_db()
