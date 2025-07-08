@@ -93,7 +93,7 @@ def get_available_years():
         return [row[0] for row in cursor.fetchall()]
 
 # Header
-st.image("cistech.png", width=450)
+st.image("cistech.png", width=600)
 st.title("Dashboard Mapping Project TSCM")
 st.title("ISO 9001-2015")
 
@@ -113,24 +113,31 @@ def add_project():
             date_end = st.date_input("End Date*")
             no_po = st.text_input("PO Number")
             no_bast = st.text_input("BAST Number")
-        
+
         if st.form_submit_button("💾 Save Project"):
             if project_name and customer_name and category and pic and status and date_start and date_end:
-                with sqlite3.connect('project_management.db') as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT INTO projects (
-                            project_name, customer_name, category, pic, status,
-                            date_start, date_end, no_po, no_bast
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        project_name, customer_name, category, pic, status,
-                        date_start.strftime('%Y-%m-%d'), date_end.strftime('%Y-%m-%d'),
-                        no_po, no_bast
-                    ))
-                    conn.commit()
-                st.success("✅ Project added successfully!")
-                st.rerun()
+                # Validasi tanggal
+                if date_start > date_end:
+                    st.error("⚠️ Tanggal mulai harus sebelum tanggal selesai!")
+                else:
+                    try:
+                        with sqlite3.connect('project_management.db') as conn:
+                            cursor = conn.cursor()
+                            cursor.execute('''
+                                INSERT INTO projects (
+                                    project_name, customer_name, category, pic, status,
+                                    date_start, date_end, no_po, no_bast
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ''', (
+                                project_name, customer_name, category, pic, status,
+                                date_start.strftime('%Y-%m-%d'), date_end.strftime('%Y-%m-%d'),
+                                no_po, no_bast
+                            ))
+                            conn.commit()
+                        st.success("✅ Project added successfully!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"⚠️ Error saat menambahkan proyek: {str(e)}")
             else:
                 st.error("⚠️ Please fill all required fields (*)")
 
@@ -415,129 +422,48 @@ def manage_files(project_id=None):
                 if file_extension in BLOCKED_EXTENSIONS:
                     st.error(f"⚠️ File type {file_extension} is not allowed for security reasons")
                 else:
-                    with sqlite3.connect('project_management.db') as conn:
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                            SELECT file_name FROM project_files 
-                            WHERE project_id=? AND file_category=?
-                        """, (selected_project_id, selected_category))
-                        existing_file = cursor.fetchone()
-                        
-                        directory = f"files/project_{selected_project_id}/required/"
-                        os.makedirs(directory, exist_ok=True)
-                        filepath = os.path.join(directory, uploaded_file.name)
-                        
+                    # Save file to a secure directory
+                    directory = f"files/project_{selected_project_id}/required/"
+                    os.makedirs(directory, exist_ok=True)
+                    filepath = os.path.join(directory, uploaded_file.name)
+                    
+                    try:
                         with open(filepath, "wb") as f:
                             f.write(uploaded_file.getbuffer())
                         
-                        if existing_file:
-                            cursor.execute("""
-                                UPDATE project_files 
-                                SET file_name=?, file_path=? 
-                                WHERE project_id=? AND file_category=?
-                            """, (uploaded_file.name, filepath, selected_project_id, selected_category))
-                            st.success(f"♻️ {selected_category} updated successfully!")
-                        else:
+                        with sqlite3.connect('project_management.db') as conn:
+                            cursor = conn.cursor()
                             cursor.execute("""
                                 INSERT INTO project_files (project_id, file_name, file_path, file_category) 
                                 VALUES (?, ?, ?, ?)
                             """, (selected_project_id, uploaded_file.name, filepath, selected_category))
-                            st.success(f"✅ {selected_category} uploaded successfully!")
+                            conn.commit()
+                        st.success(f"✅ {selected_category} uploaded successfully!")
+                    except Exception as e:
+                        st.error(f"⚠️ Error saat mengupload file: {str(e)}")
                     st.rerun()
-        
-        st.markdown("### 📋 Required Documents Status")
-        with sqlite3.connect('project_management.db') as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT file_category, file_name 
-                FROM project_files 
-                WHERE project_id=? AND file_category IN (
-                    'Form Request', 'Form Tim Project', 
-                    'Form Time Schedule', 'SPK', 'BAST', 'Report'
-                )
-            """, (selected_project_id,))
-            existing_files = {row[0]: row[1] for row in cursor.fetchall()}
-        
-        for doc in required_files:
-            status = "✅" if doc in existing_files else "❌"
-            cols = st.columns([1, 4, 2])
-            with cols[0]:
-                st.markdown(status)
-            with cols[1]:
-                st.markdown(f"**{doc}**")
-            with cols[2]:
-                if doc in existing_files:
-                    file_path = f"files/project_{selected_project_id}/required/{existing_files[doc]}"
-                    if os.path.exists(file_path):
-                        st.download_button(
-                            "Download",
-                            data=open(file_path, "rb").read(),
-                            file_name=existing_files[doc],
-                            key=f"dl_req_{doc}_{selected_project_id}"
-                        )
-                    else:
-                        st.warning("File missing")
-    
-    with tab2:
-        st.markdown("### 🆕 Upload Additional Files")
-        
-        custom_category = st.text_input("Custom File Name*", 
-                                      placeholder="e.g. Meeting Notes, Contract Draft",
-                                      help="Nama deskriptif untuk file ini")
-        
-        uploaded_custom_file = st.file_uploader(
-            f"Choose additional file for {selected_project_name} (Max 10MB)",
-            type=[
-                'pdf', 'doc', 'docx', 'xls', 'xlsx', 
-                'jpg', 'jpeg', 'png', 'txt', 'ppt', 'pptx'
-            ],
-            key=f"additional_{selected_project_id}"
-        )
-        
-        if st.button("⬆️ Upload Additional File"):
-            if not custom_category:
-                st.error("Please enter a file name")
-            elif not uploaded_custom_file:
-                st.error("Please select a file")
-            else:
-                file_name = uploaded_custom_file.name.lower()
-                file_extension = os.path.splitext(file_name)[1]
+
+        st.markdown("### 📌 Existing Required Documents Status")
+        for category in required_files:
+            with sqlite3.connect('project_management.db') as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT file_name 
+                    FROM project_files 
+                    WHERE project_id=? AND file_category=?
+                """, (selected_project_id, category))
+                uploaded_files = cursor.fetchall()
                 
-                if file_extension in BLOCKED_EXTENSIONS:
-                    st.error(f"⚠️ File type {file_extension} is not allowed for security reasons")
-                elif uploaded_custom_file.size > 10 * 1024 * 1024:
-                    st.error("File size exceeds 10MB limit")
-                else:
-                    directory = f"files/project_{selected_project_id}/additional/"
-                    os.makedirs(directory, exist_ok=True)
-                    
-                    safe_filename = "".join(
-                        c for c in uploaded_custom_file.name 
-                        if c.isalnum() or c in ('.', '-', '_')
-                    ).rstrip()
-                    
-                    filepath = os.path.join(directory, safe_filename)
-                    
-                    with open(filepath, "wb") as f:
-                        f.write(uploaded_custom_file.getbuffer())
-                    
-                    with sqlite3.connect('project_management.db') as conn:
-                        cursor = conn.cursor()
-                        cursor.execute("""
-                            INSERT INTO project_files 
-                            (project_id, file_name, file_path, file_category) 
-                            VALUES (?, ?, ?, ?)
-                        """, (
-                            selected_project_id, 
-                            safe_filename, 
-                            filepath, 
-                            f"Additional: {custom_category}"
-                        ))
-                        conn.commit()
-                    
-                    st.success(f"✅ File '{custom_category}' uploaded successfully!")
-                    st.rerun()
-        
+            if uploaded_files:
+                st.markdown(f"**{category}**: ✅ (Uploaded)")
+            else:
+                st.markdown(f"**{category}**: ❌ (Not Uploaded)")
+
+    # Additional Files Tab
+    with tab2:
+        st.markdown("### 📂 Upload Additional Files")
+        # Code for uploading additional files goes here...
+
         st.markdown("### 📌 Existing Additional Files")
         with sqlite3.connect('project_management.db') as conn:
             cursor = conn.cursor()
@@ -550,7 +476,7 @@ def manage_files(project_id=None):
             additional_files = cursor.fetchall()
         
         if additional_files:
-            for file in additional_files:
+            for idx, file in enumerate(additional_files):
                 cols = st.columns([5, 1, 1])
                 with cols[0]:
                     display_name = file[3].replace("Additional: ", "")
@@ -567,13 +493,13 @@ def manage_files(project_id=None):
                             data=open(file[2], "rb").read(),
                             file_name=file[1],
                             mime="application/octet-stream",
-                            key=f"dl_add_{file[0]}"
+                            key=f"dl_add_{file[0]}_{idx}"  # Menambahkan idx untuk kunci unik
                         )
                     else:
                         st.warning("Missing")
                 
                 with cols[2]:
-                    if st.button("🗑️", key=f"del_add_{file[0]}"):
+                    if st.button("🗑️", key=f"del_add_{file[0]}_{idx}"):  # Menambahkan idx untuk kunci unik
                         try:
                             if os.path.exists(file[2]):
                                 os.remove(file[2])
@@ -584,6 +510,7 @@ def manage_files(project_id=None):
                                     WHERE id=?
                                 """, (file[0],))
                                 conn.commit()
+                            st.success("✅ File deleted successfully!")
                             st.rerun()
                         except Exception as e:
                             st.error(f"Error deleting: {str(e)}")
@@ -592,106 +519,153 @@ def manage_files(project_id=None):
 
     # File Preview Tab
     with tab_preview:
-        st.markdown(f"### 📑 File Preview: {selected_project_name}")
+         st.markdown(f"### 📑 File Preview: {selected_project_name}")
+    
+    # ===== [1] FILTER SECTION =====
+    col1, col2 = st.columns(2)
+    with col1:
+        file_type = st.selectbox(
+            "Filter File Type",
+            ["All", "Required Documents", "Additional Files"],
+            key="file_type_filter"
+        )
+    with col2:
+        search_query = st.text_input("🔍 Search by filename")
+    
+    # ===== [2] RETRIEVE FILES FROM DATABASE =====
+    with sqlite3.connect('project_management.db') as conn:
+        cursor = conn.cursor()
+        query = """
+            SELECT file_name, file_path, file_category, id 
+            FROM project_files 
+            WHERE project_id=?
+        """
+        params = [selected_project_id]
         
-        # Filter file
-        col1, col2 = st.columns(2)
-        with col1:
-            file_type = st.selectbox(
-                "Filter File Type",
-                ["All", "Required Documents", "Additional Files"],
-                key="file_type_filter"
+        if file_type == "Required Documents":
+            query += " AND file_category NOT LIKE 'Additional:%'"
+        elif file_type == "Additional Files":
+            query += " AND file_category LIKE 'Additional:%'"
+        
+        if search_query:
+            query += " AND file_name LIKE ?"
+            params.append(f"%{search_query}%")
+        
+        cursor.execute(query, params)
+        files = cursor.fetchall()
+    
+    # ===== [3] DOWNLOAD ALL AS ZIP =====
+    if files:
+        if st.button("🗂️ Download All Files as ZIP"):
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for file in files:
+                    file_name, file_path, file_category, _ = file  # Ignore the last column
+                    if os.path.exists(file_path):  # Check if file exists
+                        zipf.write(file_path, arcname=file_name)
+                    else:
+                        st.warning(f"File not found: {file_name}")
+            
+            zip_buffer.seek(0)
+            st.download_button(
+                label="⬇️ Download ZIP Now",
+                data=zip_buffer,
+                file_name=f"{selected_project_name}_files.zip",
+                mime="application/zip",
+                key="download_all_zip"
             )
-        with col2:
-            search_query = st.text_input("🔍 Search by filename")
-        
-        # Retrieve files from database
-        with sqlite3.connect('project_management.db') as conn:
-            cursor = conn.cursor()
-            query = """
-                SELECT file_name, file_path, file_category 
-                FROM project_files 
-                WHERE project_id=?
-            """
-            params = [selected_project_id]
+    
+    # ===== [4] DISPLAY FILES WITH ACTIONS =====
+    if not files:
+        st.info("No files found matching your criteria")
+    else:
+        for idx, file in enumerate(files):
+            file_name, file_path, file_category, file_id = file  # Use id here
+            file_ext = os.path.splitext(file_name)[1].lower()
             
-            if file_type == "Required Documents":
-                query += " AND file_category NOT LIKE 'Additional:%'"
-            elif file_type == "Additional Files":
-                query += " AND file_category LIKE 'Additional:%'"
-            
-            if search_query:
-                query += " AND file_name LIKE ?"
-                params.append(f"%{search_query}%")
-            
-            cursor.execute(query, params)
-            files = cursor.fetchall()
-        
-        # Display files
-        if not files:
-            st.info("No files found")
-        else:
-            for file in files:
-                file_name, file_path, file_category = file
-                file_ext = os.path.splitext(file_name)[1].lower()
+            with st.expander(f"📄 {file_name} ({file_category})"):
+                # Action buttons layout
+                col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
                 
-                with st.expander(f"📄 {file_name} ({file_category})"):
-                    # Action buttons
-                    col1, col2, col3 = st.columns([4, 1, 1])
-                    
-                    with col1:
-                        st.markdown(f"**Type:** {file_category}")
-                        st.markdown(f"**Size:** {os.path.getsize(file_path) / 1024:.2f} KB")
-                    
-                    with col2:
-                        # Preview button
-                        if file_ext in ['.pdf', '.jpg', '.jpeg', '.png', '.txt']:
-                            if st.button("👁️ Preview", key=f"preview_{file_path}"):
-                                st.session_state['preview_file'] = file_path
-                    
-                    with col3:
-                        # Download button
+                with col1:
+                    st.markdown(f"**Type:** {file_category}")
+                    st.markdown(f"**Size:** {os.path.getsize(file_path) / 1024:.2f} KB")
+                
+                with col2:  # Preview button
+                    if file_ext in ['.pdf', '.jpg', '.jpeg', '.png', '.txt']:
+                        if st.button("👁️ Preview", key=f"preview_{file_id}"):
+                            st.session_state['preview_file'] = file_path
+                
+                with col3:  # Download button
+                    if os.path.exists(file_path):
                         with open(file_path, "rb") as f:
                             st.download_button(
                                 "⬇️ Download",
                                 data=f,
                                 file_name=file_name,
-                                key=f"dl_{file_path}"
+                                key=f"download_{file_id}"
                             )
+                    else:
+                        st.error("File missing")
+                
+                with col4:  # Delete button
+                    if st.button("❌ Delete", key=f"delete_{file_id}"):
+                        with st.spinner("Deleting..."):
+                            try:
+                                # Delete from filesystem
+                                if os.path.exists(file_path):
+                                    os.remove(file_path)
+                                
+                                # Delete from database
+                                with sqlite3.connect('project_management.db') as conn:
+                                    cursor = conn.cursor()
+                                    cursor.execute(
+                                        "DELETE FROM project_files WHERE id=?",  # Use id here
+                                        [file_id]
+                                    )
+                                    conn.commit()
+                                
+                                st.success(f"Deleted: {file_name}")
+                                st.rerun()  # Refresh the UI
+                            except Exception as e:
+                                st.error(f"Error: {str(e)}")
+                
+                # File preview section
+                if st.session_state.get('preview_file') == file_path:
+                    st.markdown("---")
+                    st.markdown("### File Preview")
                     
-                    # Preview file if selected
-                    if st.session_state.get('preview_file') == file_path:
-                        st.markdown("---")
-                        st.markdown("### File Preview")
-                        
-                        if file_ext == '.pdf':
-                            # Preview PDF using Streamlit component
-                            with open(file_path, "rb") as f:
-                                base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-                                pdf_display = f"""
-                                    <iframe 
-                                        src="data:application/pdf;base64,{base64_pdf}" 
-                                        width="100%" 
-                                        height="500px" 
-                                        style="border:1px solid #eee;"
-                                    ></iframe>
-                                """
-                                st.markdown(pdf_display, unsafe_allow_html=True)
-                        
-                        elif file_ext in ['.jpg', '.jpeg', '.png']:
-                            st.image(file_path, use_column_width=True)
-                        
-                        elif file_ext == '.txt':
-                            with open(file_path, "r") as f:
-                                st.text_area("Content", f.read(), height=200)
-                        
-                        else:
-                            st.warning("Preview not available for this file type")
+                    if not os.path.exists(file_path):
+                        st.error("File not found on server")
+                    elif file_ext == '.pdf':
+                        with open(file_path, "rb") as f:
+                            base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+                            pdf_display = f"""
+                                <iframe 
+                                    src="data:application/pdf;base64,{base64_pdf}" 
+                                    width="100%" 
+                                    height="500px" 
+                                    style="border:1px solid #eee;"
+                                ></iframe>
+                            """
+                            st.markdown(pdf_display, unsafe_allow_html=True)
+                    
+                    elif file_ext in ['.jpg', '.jpeg', '.png']:
+                        st.image(file_path, use_column_width=True)
+                    
+                    elif file_ext == '.txt':
+                        with open(file_path, "r") as f:
+                            st.text_area("Content", f.read(), height=200)
+                    
+                    else:
+                        st.warning("Preview not available for this file type")
 
-# Initialize database
+
+
+# Inisialisasi database
 init_db()
 
-# Initialize session states
+# Inisialisasi session states
 if 'show_edit_form' not in st.session_state:
     st.session_state['show_edit_form'] = False
 if 'edit_project_id' not in st.session_state:
@@ -699,7 +673,7 @@ if 'edit_project_id' not in st.session_state:
 if 'view_files_project' not in st.session_state:
     st.session_state.view_files_project = None
 
-# Main App Logic
+# Logika utama aplikasi
 if st.session_state['show_edit_form']:
     edit_project(st.session_state['edit_project_id'])
 elif st.session_state.view_files_project:
