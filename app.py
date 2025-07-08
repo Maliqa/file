@@ -4,6 +4,7 @@ import os
 import zipfile
 import io
 from datetime import datetime
+import base64
 
 # Initialize database
 st.set_page_config(page_title="CISTECH", page_icon="📊", layout="wide")
@@ -386,7 +387,7 @@ def manage_files(project_id=None):
         selected_project_name = f"{project[1]} - {project[2]}"
         st.write(f"Viewing files for: **{selected_project_name}**")
     
-    tab1, tab2 = st.tabs(["📋 Required Documents", "📂 Additional Files"])
+    tab1, tab2, tab_preview = st.tabs(["📋 Required Documents", "📂 Additional Files", "📑 File Preview"])
     
     with tab1:
         required_files = [
@@ -589,37 +590,8 @@ def manage_files(project_id=None):
         else:
             st.info("No additional files uploaded yet")
 
-    st.markdown("---")
-    st.markdown("### 🗂 Download All Project Files")
-    
-    if st.button("⬇️ Download All Files as ZIP"):
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-            required_dir = f"files/project_{selected_project_id}/required/"
-            if os.path.exists(required_dir):
-                for file in os.listdir(required_dir):
-                    file_path = os.path.join(required_dir, file)
-                    if os.path.isfile(file_path):
-                        zipf.write(file_path, arcname=f"Required Documents/{file}")
-            
-            additional_dir = f"files/project_{selected_project_id}/additional/"
-            if os.path.exists(additional_dir):
-                for file in os.listdir(additional_dir):
-                    file_path = os.path.join(additional_dir, file)
-                    if os.path.isfile(file_path):
-                        zipf.write(file_path, arcname=f"Additional Files/{file}")
-        
-        if zip_buffer.tell() > 0:
-            st.download_button(
-                label="💾 Download ZIP Now",
-                data=zip_buffer,
-                file_name=f"{selected_project_name.replace(' ', '_')}_ALL_FILES.zip",
-                mime="application/zip"
-            )
-        else:
-            st.warning("No files available to download")
-            
- with tab_preview:
+    # File Preview Tab
+    with tab_preview:
         st.markdown(f"### 📑 File Preview: {selected_project_name}")
         
         # Filter file
@@ -633,7 +605,7 @@ def manage_files(project_id=None):
         with col2:
             search_query = st.text_input("🔍 Search by filename")
         
-        # Ambil file dari database
+        # Retrieve files from database
         with sqlite3.connect('project_management.db') as conn:
             cursor = conn.cursor()
             query = """
@@ -655,7 +627,7 @@ def manage_files(project_id=None):
             cursor.execute(query, params)
             files = cursor.fetchall()
         
-        # Tampilkan file
+        # Display files
         if not files:
             st.info("No files found")
         else:
@@ -664,7 +636,7 @@ def manage_files(project_id=None):
                 file_ext = os.path.splitext(file_name)[1].lower()
                 
                 with st.expander(f"📄 {file_name} ({file_category})"):
-                    # Kolom untuk tombol aksi
+                    # Action buttons
                     col1, col2, col3 = st.columns([4, 1, 1])
                     
                     with col1:
@@ -672,13 +644,13 @@ def manage_files(project_id=None):
                         st.markdown(f"**Size:** {os.path.getsize(file_path) / 1024:.2f} KB")
                     
                     with col2:
-                        # Tombol preview
-                        if file_ext in PREVIEW_SUPPORTED:
+                        # Preview button
+                        if file_ext in ['.pdf', '.jpg', '.jpeg', '.png', '.txt']:
                             if st.button("👁️ Preview", key=f"preview_{file_path}"):
                                 st.session_state['preview_file'] = file_path
                     
                     with col3:
-                        # Tombol download
+                        # Download button
                         with open(file_path, "rb") as f:
                             st.download_button(
                                 "⬇️ Download",
@@ -687,13 +659,13 @@ def manage_files(project_id=None):
                                 key=f"dl_{file_path}"
                             )
                     
-                    # Preview file (jika dipilih)
+                    # Preview file if selected
                     if st.session_state.get('preview_file') == file_path:
                         st.markdown("---")
                         st.markdown("### File Preview")
                         
                         if file_ext == '.pdf':
-                            # Preview PDF (menggunakan komponen Streamlit)
+                            # Preview PDF using Streamlit component
                             with open(file_path, "rb") as f:
                                 base64_pdf = base64.b64encode(f.read()).decode('utf-8')
                                 pdf_display = f"""
@@ -715,7 +687,6 @@ def manage_files(project_id=None):
                         
                         else:
                             st.warning("Preview not available for this file type")
-
 
 # Initialize database
 init_db()
