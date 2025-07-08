@@ -618,6 +618,104 @@ def manage_files(project_id=None):
             )
         else:
             st.warning("No files available to download")
+            
+ with tab_preview:
+        st.markdown(f"### 📑 File Preview: {selected_project_name}")
+        
+        # Filter file
+        col1, col2 = st.columns(2)
+        with col1:
+            file_type = st.selectbox(
+                "Filter File Type",
+                ["All", "Required Documents", "Additional Files"],
+                key="file_type_filter"
+            )
+        with col2:
+            search_query = st.text_input("🔍 Search by filename")
+        
+        # Ambil file dari database
+        with sqlite3.connect('project_management.db') as conn:
+            cursor = conn.cursor()
+            query = """
+                SELECT file_name, file_path, file_category 
+                FROM project_files 
+                WHERE project_id=?
+            """
+            params = [selected_project_id]
+            
+            if file_type == "Required Documents":
+                query += " AND file_category NOT LIKE 'Additional:%'"
+            elif file_type == "Additional Files":
+                query += " AND file_category LIKE 'Additional:%'"
+            
+            if search_query:
+                query += " AND file_name LIKE ?"
+                params.append(f"%{search_query}%")
+            
+            cursor.execute(query, params)
+            files = cursor.fetchall()
+        
+        # Tampilkan file
+        if not files:
+            st.info("No files found")
+        else:
+            for file in files:
+                file_name, file_path, file_category = file
+                file_ext = os.path.splitext(file_name)[1].lower()
+                
+                with st.expander(f"📄 {file_name} ({file_category})"):
+                    # Kolom untuk tombol aksi
+                    col1, col2, col3 = st.columns([4, 1, 1])
+                    
+                    with col1:
+                        st.markdown(f"**Type:** {file_category}")
+                        st.markdown(f"**Size:** {os.path.getsize(file_path) / 1024:.2f} KB")
+                    
+                    with col2:
+                        # Tombol preview
+                        if file_ext in PREVIEW_SUPPORTED:
+                            if st.button("👁️ Preview", key=f"preview_{file_path}"):
+                                st.session_state['preview_file'] = file_path
+                    
+                    with col3:
+                        # Tombol download
+                        with open(file_path, "rb") as f:
+                            st.download_button(
+                                "⬇️ Download",
+                                data=f,
+                                file_name=file_name,
+                                key=f"dl_{file_path}"
+                            )
+                    
+                    # Preview file (jika dipilih)
+                    if st.session_state.get('preview_file') == file_path:
+                        st.markdown("---")
+                        st.markdown("### File Preview")
+                        
+                        if file_ext == '.pdf':
+                            # Preview PDF (menggunakan komponen Streamlit)
+                            with open(file_path, "rb") as f:
+                                base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+                                pdf_display = f"""
+                                    <iframe 
+                                        src="data:application/pdf;base64,{base64_pdf}" 
+                                        width="100%" 
+                                        height="500px" 
+                                        style="border:1px solid #eee;"
+                                    ></iframe>
+                                """
+                                st.markdown(pdf_display, unsafe_allow_html=True)
+                        
+                        elif file_ext in ['.jpg', '.jpeg', '.png']:
+                            st.image(file_path, use_column_width=True)
+                        
+                        elif file_ext == '.txt':
+                            with open(file_path, "r") as f:
+                                st.text_area("Content", f.read(), height=200)
+                        
+                        else:
+                            st.warning("Preview not available for this file type")
+
 
 # Initialize database
 init_db()
