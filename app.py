@@ -778,40 +778,41 @@ elif st.session_state.view_files_project:
         st.error("Project not found")
         st.session_state.view_files_project = None
 else:
+    # --- SEMUA TAB DI SINI ---
     tabs = st.tabs([
-    "📈 Grafik Proyek",
-    "📋 Board",
-    "📅 Timeline",
-    "➕ Add Project",
-    "✏️ Edit Project",
-    "🗑️ Delete Project",
-    "📂 Manage Files"
-])
-with tabs[0]:
-    dashboard_line_chart()
-with tabs[1]:
-    view_projects_kanban()
-with tabs[2]:
-    view_timeline()
-with tabs[3]:
-    add_project()
-with tabs[4]:
-    st.subheader("✏️ Edit Project")
-    projects = get_all_projects()
-    if projects:
-        project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
-        selected_project = st.selectbox("Select Project to Edit", list(project_options.keys()))
-        edit_project(project_options[selected_project])
-    else:
-        st.info("No projects available to edit")
-with tabs[5]:
-    st.subheader("🗑️ Delete Project")
-    projects = get_all_projects()
-    if projects:
-        project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
-        selected_project = st.selectbox("Select Project to Delete", list(project_options.keys()))
-        delete_project(project_options[selected_project])
-    else:
-        st.info("No projects available to delete")
-with tabs[6]:
-    manage_files()
+        "📈 Grafik Proyek",
+        "📋 Board",
+        "📅 Timeline",
+        "➕ Add Project",
+        "✏️ Edit Project",
+        "🗑️ Delete Project",
+        "📂 Manage Files"
+    ])
+    with tabs[0]:
+        dashboard_line_chart()
+    with tabs[1]:
+        view_projects_kanban()
+    with tabs[2]:
+        view_timeline()
+    with tabs[3]:
+        add_project()
+    with tabs[4]:
+        st.subheader("✏️ Edit Project")
+        projects = get_all_projects()
+        if projects:
+            project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
+            selected_project = st.selectbox("Select Project to Edit", list(project_options.keys()))
+            edit_project(project_options[selected_project])
+        else:
+            st.info("No projects available to edit")
+    with tabs[5]:
+        st.subheader("🗑️ Delete Project")
+        projects = get_all_projects()
+        if projects:
+            project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
+            selected_project = st.selectbox("Select Project to Delete", list(project_options.keys()))
+            delete_project(project_options[selected_project])
+        else:
+            st.info("No projects available to delete")
+    with tabs[6]:
+        manage_files()
