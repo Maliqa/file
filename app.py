@@ -115,6 +115,37 @@ else:  # Dark Mode
     </style>
     """, unsafe_allow_html=True)
 
+if mode == "Light Mode":
+    st.markdown("""
+    <style>
+    .upload-doc-title {
+        font-size: 1.18em;
+        font-weight: 700;
+        color: #22223B !important;
+        background: #eaf6fb;
+        padding: 6px 16px;
+        border-radius: 6px;
+        display: inline-block;
+        letter-spacing: 0.5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <style>
+    .upload-doc-title {
+        font-size: 1.18em;
+        font-weight: 700;
+        color: #48c9b0 !important;
+        background: #232323;
+        padding: 6px 16px;
+        border-radius: 6px;
+        display: inline-block;
+        letter-spacing: 0.5px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 st.set_page_config(page_title="CISTECH", page_icon="📊", layout="wide")
 
 # HEADER
@@ -263,7 +294,7 @@ def view_projects_kanban():
     # Pisahin PROJECT/SERVICE
     projects_only = [p for p in projects if p[3] == "PROJECT"]
     services_only = [p for p in projects if p[3] == "SERVICE"]
-    tab_project, tab_service = st.tabs(["PROJECT", "SERVICE"])
+    tab_project, tab_service = st.tabs(["📁 PROJECT", "🛠️ SERVICE"])
     with tab_project:
         st.markdown("### 📁 List Project")
         display_kanban(projects_only)
@@ -406,7 +437,7 @@ def manage_files(project_id=None):
             "BAST",
             "Report"
         ]
-        st.markdown("### 📤 Upload Required Documents")
+        st.markdown("<span class='upload-doc-title'>📤 Upload Required Documents</span>", unsafe_allow_html=True)
         selected_category = st.selectbox("Document Type", required_files)
         uploaded_file = st.file_uploader(
             f"Choose {selected_category} file",
