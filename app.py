@@ -1,11 +1,12 @@
 import streamlit as st
 import sqlite3
 import os
+import pandas as pd
+import plotly.express as px
 import zipfile
 import io
 from datetime import datetime
 import base64
-
 # INIT DB
 def init_db():
     conn = sqlite3.connect('project_management.db')
@@ -606,6 +607,59 @@ def manage_files(project_id=None):
                         else:
                             st.warning("Preview not available for this file type")
 
+def dashboard_line_chart():
+    st.header("📈 Statistik Proyek: Line Chart Per Bulan & Per Tahun")
+
+    # Ambil data dari database
+    with sqlite3.connect('project_management.db') as conn:
+        df = pd.read_sql_query("SELECT * FROM projects", conn)
+
+    if df.empty:
+        st.info("Belum ada data proyek.")
+        return
+
+    # Pastikan date_start tipe datetime
+    df['date_start'] = pd.to_datetime(df['date_start'])
+
+    # ---- Grafik Per Bulan (Tahun Terpilih) ----
+    st.subheader("Jumlah Proyek Per Bulan (Tahun Terpilih)")
+    df['year'] = df['date_start'].dt.year
+    df['month'] = df['date_start'].dt.month
+
+    tahun_opsi = sorted(df['year'].unique())
+    tahun_pilih = st.selectbox("Pilih Tahun", tahun_opsi, index=len(tahun_opsi)-1)
+
+    df_tahun = df[df['year'] == tahun_pilih]
+    per_bulan = df_tahun.groupby('month').size().reset_index(name='jumlah')
+    # Nama bulan Indonesia/Inggris
+    bulan_nama = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ]
+    per_bulan['Bulan'] = per_bulan['month'].apply(lambda x: bulan_nama[x-1])
+
+    # Line chart per bulan
+    fig_bulan = px.line(
+        per_bulan, 
+        x='Bulan', y='jumlah', 
+        markers=True,
+        title=f"Jumlah Proyek per Bulan di Tahun {tahun_pilih}"
+    )
+    fig_bulan.update_layout(xaxis_title="Bulan", yaxis_title="Jumlah Proyek")
+    st.plotly_chart(fig_bulan, use_container_width=True)
+
+    # ---- Grafik Per Tahun ----
+    st.subheader("Jumlah Proyek Per Tahun")
+    per_tahun = df.groupby('year').size().reset_index(name='jumlah')
+
+    fig_tahun = px.line(
+        per_tahun,
+        x='year', y='jumlah',
+        markers=True,
+        title="Jumlah Proyek per Tahun"
+    )
+    fig_tahun.update_layout(xaxis_title="Tahun", yaxis_title="Jumlah Proyek")
+    st.plotly_chart(fig_tahun, use_container_width=True)
 # INIT DB & SESSION STATE
 init_db()
 if 'show_edit_form' not in st.session_state:
@@ -632,36 +686,39 @@ elif st.session_state.view_files_project:
         st.session_state.view_files_project = None
 else:
     tabs = st.tabs([
-        "📋 Board",
-        "📅 Timeline",
-        "➕ Add Project",
-        "✏️ Edit Project",
-        "🗑️ Delete Project",
-        "📂 Manage Files"
-    ])
-    with tabs[0]:
-        view_projects_kanban()
-    with tabs[1]:
-        view_timeline()
-    with tabs[2]:
-        add_project()
-    with tabs[3]:
-        st.subheader("✏️ Edit Project")
-        projects = get_all_projects()
-        if projects:
-            project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
-            selected_project = st.selectbox("Select Project to Edit", list(project_options.keys()))
-            edit_project(project_options[selected_project])
-        else:
-            st.info("No projects available to edit")
-    with tabs[4]:
-        st.subheader("🗑️ Delete Project")
-        projects = get_all_projects()
-        if projects:
-            project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
-            selected_project = st.selectbox("Select Project to Delete", list(project_options.keys()))
-            delete_project(project_options[selected_project])
-        else:
-            st.info("No projects available to delete")
-    with tabs[5]:
-        manage_files()
+    "📈 Grafik Proyek",
+    "📋 Board",
+    "📅 Timeline",
+    "➕ Add Project",
+    "✏️ Edit Project",
+    "🗑️ Delete Project",
+    "📂 Manage Files"
+])
+with tabs[0]:
+    dashboard_line_chart()
+with tabs[1]:
+    view_projects_kanban()
+with tabs[2]:
+    view_timeline()
+with tabs[3]:
+    add_project()
+with tabs[4]:
+    st.subheader("✏️ Edit Project")
+    projects = get_all_projects()
+    if projects:
+        project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
+        selected_project = st.selectbox("Select Project to Edit", list(project_options.keys()))
+        edit_project(project_options[selected_project])
+    else:
+        st.info("No projects available to edit")
+with tabs[5]:
+    st.subheader("🗑️ Delete Project")
+    projects = get_all_projects()
+    if projects:
+        project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
+        selected_project = st.selectbox("Select Project to Delete", list(project_options.keys()))
+        delete_project(project_options[selected_project])
+    else:
+        st.info("No projects available to delete")
+with tabs[6]:
+    manage_files()
