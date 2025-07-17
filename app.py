@@ -68,43 +68,24 @@ if mode == "Light Mode":
     st.markdown("""
     <style>
     .stApp { background-color: #fff !important; color: #111 !important; }
-    h1, h2, h3, h4, h5, h6,
-    .stTitle, .stHeader, .stSubheader, .stTabs, .stExpander,
-    body, p, div, span, label, .stMarkdown, .stCaption, .stText {
-        color: #111 !important;
-        background: none !important;
-        font-weight: bold;
+    /* Hover transparan tab */
+    .stTabs [role="tab"]:hover {
+        background: rgba(0,0,0,0.08) !important;
+        transition: background 0.2s;
     }
-    .stButton > button, .stDownloadButton > button, .stDownloadButton > a {
-        background: #fff !important;
+    /* Aktif tab */
+    .stTabs [aria-selected="true"] {
+        background: #e0e0e0 !important;
         color: #111 !important;
-        border-radius: 8px !important;
-        border: 2px solid #111 !important;
         font-weight: bold !important;
-        padding: 0.5em 2em !important;
-        margin-bottom: 6px;
-        font-size: 1.05em !important;
-        transition: background 0.2s, color 0.2s;
+        border-radius: 10px 10px 0 0;
     }
-    .stButton > button:hover, .stDownloadButton > button:hover, .stDownloadButton > a:hover {
-        background: #111 !important;
-        color: #fff !important;
-    }
-    .stExpander, .stContainer {
-        background: #fff !important;
-        color: #111 !important;
-        border-radius: 10px !important;
-        border: 1px solid #e0e0e0 !important;
-    }
-    .stProgress > div > div {
-        background: #111 !important;
-    }
-    .stAlert, .stAlert-success, .stAlert-warning, .stAlert-error {
-        background: #fff !important;
-        color: #111 !important;
-        border-radius: 8px !important;
-        border: 2px solid #111 !important;
-        font-size: 1.05em !important;
+    /* Tombol kecil di expander board */
+    .stButton > button[kecil] {
+        font-size: 0.88em !important;
+        padding: 0.35em 1.2em !important;
+        min-height: 32px !important;
+        border-radius: 6px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -112,43 +93,24 @@ else:  # Dark Mode
     st.markdown("""
     <style>
     .stApp { background-color: #181818 !important; color: #fff !important; }
-    h1, h2, h3, h4, h5, h6,
-    .stTitle, .stHeader, .stSubheader, .stTabs, .stExpander,
-    body, p, div, span, label, .stMarkdown, .stCaption, .stText {
-        color: #fff !important;
-        background: none !important;
-        font-weight: bold;
+    /* Hover transparan tab */
+    .stTabs [role="tab"]:hover {
+        background: rgba(255,255,255,0.10) !important;
+        transition: background 0.2s;
     }
-    .stButton > button, .stDownloadButton > button, .stDownloadButton > a {
+    /* Aktif tab */
+    .stTabs [aria-selected="true"] {
         background: #22223B !important;
         color: #fff !important;
-        border-radius: 8px !important;
-        border: 2px solid #fff !important;
         font-weight: bold !important;
-        padding: 0.5em 2em !important;
-        margin-bottom: 6px;
-        font-size: 1.05em !important;
-        transition: background 0.2s, color 0.2s;
+        border-radius: 10px 10px 0 0;
     }
-    .stButton > button:hover, .stDownloadButton > button:hover, .stDownloadButton > a:hover {
-        background: #fff !important;
-        color: #22223B !important;
-    }
-    .stExpander, .stContainer {
-        background: #232323 !important;
-        color: #fff !important;
-        border-radius: 10px !important;
-        border: 1px solid #4f8cff !important;
-    }
-    .stProgress > div > div {
-        background: #48c9b0 !important;
-    }
-    .stAlert, .stAlert-success, .stAlert-warning, .stAlert-error {
-        background: #232323 !important;
-        color: #fff !important;
-        border-radius: 8px !important;
-        border: 2px solid #fff !important;
-        font-size: 1.05em !important;
+    /* Tombol kecil di expander board */
+    .stButton > button[kecil] {
+        font-size: 0.83em !important;
+        padding: 0.35em 1.2em !important;
+        min-height: 32px !important;
+        border-radius: 6px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -329,6 +291,7 @@ def display_kanban(projects):
                             "✏️ Edit Project", 
                             key=f"edit_btn_{project[0]}",
                             use_container_width=True
+			    help=None
                         ):
                             st.session_state['edit_project_id'] = project[0]
                             st.session_state['show_edit_form'] = True
@@ -338,6 +301,7 @@ def display_kanban(projects):
                             "📂 View Files",
                             key=f"view_files_{project[0]}",
                             use_container_width=True
+			    help=None
                         ):
                             st.session_state.view_files_project = project[0]
                             st.rerun()
