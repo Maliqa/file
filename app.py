@@ -7,6 +7,7 @@ import zipfile
 import io
 from datetime import datetime
 import base64
+
 # INIT DB
 def init_db():
     conn = sqlite3.connect('project_management.db')
@@ -35,14 +36,6 @@ def init_db():
             FOREIGN KEY (project_id) REFERENCES projects (id)
         )
     ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS engineer_goahead (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nama_pic TEXT NOT NULL,
-            tanggal_berangkat TEXT NOT NULL,
-            tanggal_pulang TEXT NOT NULL
-        )
-    ''')
     conn.commit()
     conn.close()
 
@@ -67,24 +60,17 @@ def get_available_years():
             ORDER BY date_start DESC
         """)
         return [row[0] for row in cursor.fetchall()]
-def add_engineer_goahead(nama_pic, tanggal_berangkat, tanggal_pulang):
-    with sqlite3.connect('project_management.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO engineer_goahead (nama_pic, tanggal_berangkat, tanggal_pulang)
-            VALUES (?, ?, ?)
-        ''', (nama_pic, tanggal_berangkat, tanggal_pulang))
-        conn.commit()
 
-def get_latest_engineer_goahead():
+def get_ongoing_projects_services():
     with sqlite3.connect('project_management.db') as conn:
         cursor = conn.cursor()
-        cursor.execute('''
-            SELECT nama_pic, tanggal_berangkat, tanggal_pulang
-            FROM engineer_goahead
-            ORDER BY id DESC LIMIT 1
-        ''')
-        return cursor.fetchone()
+        cursor.execute("""
+            SELECT project_name, category, pic
+            FROM projects
+            WHERE status = 'On Going'
+            ORDER BY date_start DESC
+        """)
+        return cursor.fetchall()
 
 # INIT DB & SESSION STATE
 init_db()
@@ -108,8 +94,6 @@ if mode == "Light Mode":
     st.markdown("""
     <style>
     .stApp { background-color: #f6fbfc !important; color: #22223B !important; }
-    
-    /* Buttons (Download, Back to Board, etc) */
     .stButton > button, .stDownloadButton > button, .stDownloadButton > a {
         background: linear-gradient(90deg,#eaf6fb 60%,#48c9b0 100%) !important;
         color: #22223B !important;
@@ -125,8 +109,6 @@ if mode == "Light Mode":
         color: #fff !important;
         border-color: #22223B !important;
     }
-    
-    /* Expander & Progress Bar */
     .stExpander {
         background: #f6fbfc !important;
         border: 1.5px solid #48c9b0 !important;
@@ -136,8 +118,6 @@ if mode == "Light Mode":
     .stProgress > div > div {
         background: linear-gradient(90deg,#48c9b0 60%,#eaf6fb 100%) !important;
     }
-
-    /* Tab Styling */
     .stTabs [role="tab"]:hover {
         background: rgba(72,201,176,0.15) !important;
         color: #22223B !important;
@@ -160,8 +140,6 @@ if mode == "Light Mode":
         border-radius: 12px 12px 0 0 !important;
         transition: background 0.2s, color 0.2s;
     }
-
-    /* FileUploader Label */
     .stFileUploader label {
         color: #22223B !important;
         font-weight: 600 !important;
@@ -173,8 +151,6 @@ if mode == "Light Mode":
         display: inline-block;
         box-shadow: 0 2px 6px #48c9b022;
     }
-
-    /* Upload Required Documents Title (above uploader) */
     .upload-doc-title {
         font-size: 1.18em;
         font-weight: 700;
@@ -187,7 +163,6 @@ if mode == "Light Mode":
         box-shadow: 0 2px 12px #48c9b044;
         margin-bottom: 8px;
     }
-    /* Add Project Form Style */
     #add_project_form {
         background: linear-gradient(90deg,#eaf6fb 70%,#48c9b0 100%);
         border-radius: 18px;
@@ -217,15 +192,15 @@ if mode == "Light Mode":
 	
 st.set_page_config(page_title="CISTECH", page_icon="📊", layout="wide")
 
-
-# Ambil data PIC Go A Head
-engineer_info = get_latest_engineer_goahead()
-if engineer_info:
-    running_text = f"Engineer {engineer_info[0]} berangkat dinas tanggal {engineer_info[1]}, estimasi pulang {engineer_info[2]}"
+# RUNNING TEXT (ON GOING PROJECT/SERVICE)
+ongoing_list = get_ongoing_projects_services()
+if ongoing_list:
+    running_text = " | ".join(
+        [f"{cat}: {name} (PIC: {pic})" for name, cat, pic in ongoing_list]
+    )
 else:
-    running_text = "Tidak ada PIC dinas keluar kota saat ini."
+    running_text = "Tidak ada project/service yang sedang berjalan saat ini."
 
-# Tampilkan running text dengan style biru terang dan marquee
 st.markdown(f"""
     <marquee behavior="scroll" direction="left" style="
         font-size:1.2em;
@@ -239,6 +214,7 @@ st.markdown(f"""
         {running_text}
     </marquee>
 """, unsafe_allow_html=True)
+
 # HEADER
 st.image("cistech.png", width=545)
 st.title("Dashboard Mapping Project TSCM")
@@ -413,7 +389,6 @@ def display_kanban(projects):
                             "✏️ Edit Project", 
                             key=f"edit_btn_{project[0]}",
                             use_container_width=True
-			    
                         ):
                             st.session_state['edit_project_id'] = project[0]
                             st.session_state['show_edit_form'] = True
@@ -423,7 +398,6 @@ def display_kanban(projects):
                             "📂 View Files",
                             key=f"view_files_{project[0]}",
                             use_container_width=True
-			    
                         ):
                             st.session_state.view_files_project = project[0]
                             st.rerun()
@@ -577,7 +551,7 @@ def manage_files(project_id=None):
     with tab2:
         st.markdown("### 📂 Upload Additional Files")
         custom_category = st.text_input("Custom File Name*",
-					placeholder="e.g. Meeting Notes, Contract Draft",
+                    placeholder="e.g. Meeting Notes, Contract Draft",
                     help="Nama deskriptif untuk file ini")
         uploaded_custom_file = st.file_uploader(
             f"Choose additional file for {selected_project_name} (Max 10MB)",
@@ -810,14 +784,12 @@ def dashboard_line_chart():
 
     df_tahun = df[df['year'] == tahun_pilih]
     per_bulan = df_tahun.groupby('month').size().reset_index(name='jumlah')
-    # Nama bulan Indonesia/Inggris
     bulan_nama = [
         "Januari", "Februari", "Maret", "April", "Mei", "Juni",
         "Juli", "Agustus", "September", "Oktober", "November", "Desember"
     ]
     per_bulan['Bulan'] = per_bulan['month'].apply(lambda x: bulan_nama[x-1])
 
-    # Line chart per bulan
     fig_bulan = px.line(
         per_bulan, 
         x='Bulan', y='jumlah', 
@@ -827,7 +799,6 @@ def dashboard_line_chart():
     fig_bulan.update_layout(xaxis_title="Bulan", yaxis_title="Jumlah Proyek")
     st.plotly_chart(fig_bulan, use_container_width=True)
 
-    # ---- Grafik Per Tahun ----
     st.subheader("Jumlah Proyek Per Tahun")
     per_tahun = df.groupby('year').size().reset_index(name='jumlah')
 
@@ -839,14 +810,6 @@ def dashboard_line_chart():
     )
     fig_tahun.update_layout(xaxis_title="Tahun", yaxis_title="Jumlah Proyek")
     st.plotly_chart(fig_tahun, use_container_width=True)
-# INIT DB & SESSION STATE
-init_db()
-if 'show_edit_form' not in st.session_state:
-    st.session_state['show_edit_form'] = False
-if 'edit_project_id' not in st.session_state:
-    st.session_state['edit_project_id'] = None
-if 'view_files_project' not in st.session_state:
-    st.session_state.view_files_project = None
 
 # MAIN LOGIC
 if st.session_state['show_edit_form']:
@@ -864,7 +827,6 @@ elif st.session_state.view_files_project:
         st.error("Project not found")
         st.session_state.view_files_project = None
 else:
-    # --- SEMUA TAB DI SINI ---
     tabs = st.tabs([
         "📈 Grafik Proyek",
         "📋 Board",
@@ -872,8 +834,7 @@ else:
         "➕ Add Project",
         "✏️ Edit Project",
         "🗑️ Delete Project",
-        "📂 Manage Files",
-	"👨‍🔧 Engineer Go A Head"
+        "📂 Manage Files"
     ])
     with tabs[0]:
         dashboard_line_chart()
@@ -903,25 +864,3 @@ else:
             st.info("No projects available to delete")
     with tabs[6]:
         manage_files()
-    with tabs[7]:
-    st.subheader("👨‍🔧 Input Engineer Go A Head")
-    with st.form(key="form_goahead"):
-        nama_pic = st.text_input("Nama PIC*", help="Masukkan nama engineer yang dinas")
-        tanggal_berangkat = st.date_input("Tanggal Berangkat*", format="YYYY-MM-DD")
-        tanggal_pulang = st.date_input("Estimasi Tanggal Pulang*", format="YYYY-MM-DD")
-        submitted = st.form_submit_button("💾 Simpan Data Engineer Go A Head")
-        if submitted:
-            if nama_pic and tanggal_berangkat and tanggal_pulang:
-                add_engineer_goahead(
-                    nama_pic,
-                    tanggal_berangkat.strftime("%Y-%m-%d"),
-                    tanggal_pulang.strftime("%Y-%m-%d")
-                )
-                st.success("✅ Data Engineer Go A Head berhasil disimpan!")
-                st.rerun()
-            else:
-                st.error("⚠️ Semua field harus diisi!")
-    # Tampilkan data terakhir
-    latest_info = get_latest_engineer_goahead()
-    if latest_info:
-        st.info(f"PIC terakhir: **{latest_info[0]}** | Berangkat: {latest_info[1]} | Estimasi Pulang: {latest_info[2]}")
