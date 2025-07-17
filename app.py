@@ -35,6 +35,14 @@ def init_db():
             FOREIGN KEY (project_id) REFERENCES projects (id)
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS engineer_goahead (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nama_pic TEXT NOT NULL,
+            tanggal_berangkat TEXT NOT NULL,
+            tanggal_pulang TEXT NOT NULL
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -59,6 +67,24 @@ def get_available_years():
             ORDER BY date_start DESC
         """)
         return [row[0] for row in cursor.fetchall()]
+def add_engineer_goahead(nama_pic, tanggal_berangkat, tanggal_pulang):
+    with sqlite3.connect('project_management.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO engineer_goahead (nama_pic, tanggal_berangkat, tanggal_pulang)
+            VALUES (?, ?, ?)
+        ''', (nama_pic, tanggal_berangkat, tanggal_pulang))
+        conn.commit()
+
+def get_latest_engineer_goahead():
+    with sqlite3.connect('project_management.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT nama_pic, tanggal_berangkat, tanggal_pulang
+            FROM engineer_goahead
+            ORDER BY id DESC LIMIT 1
+        ''')
+        return cursor.fetchone()
 
 # INIT DB & SESSION STATE
 init_db()
@@ -191,6 +217,28 @@ if mode == "Light Mode":
 	
 st.set_page_config(page_title="CISTECH", page_icon="📊", layout="wide")
 
+
+# Ambil data PIC Go A Head
+engineer_info = get_latest_engineer_goahead()
+if engineer_info:
+    running_text = f"Engineer {engineer_info[0]} berangkat dinas tanggal {engineer_info[1]}, estimasi pulang {engineer_info[2]}"
+else:
+    running_text = "Tidak ada PIC dinas keluar kota saat ini."
+
+# Tampilkan running text dengan style biru terang dan marquee
+st.markdown(f"""
+    <marquee behavior="scroll" direction="left" style="
+        font-size:1.2em;
+        font-weight:bold;
+        color:#00BFFF;
+        background:#f0f8ff;
+        padding:8px 0;
+        border-radius:8px;
+        margin-bottom:10px;
+        letter-spacing:1px;">
+        {running_text}
+    </marquee>
+""", unsafe_allow_html=True)
 # HEADER
 st.image("cistech.png", width=545)
 st.title("Dashboard Mapping Project TSCM")
@@ -824,7 +872,8 @@ else:
         "➕ Add Project",
         "✏️ Edit Project",
         "🗑️ Delete Project",
-        "📂 Manage Files"
+        "📂 Manage Files",
+	"👨‍🔧 Engineer Go A Head"
     ])
     with tabs[0]:
         dashboard_line_chart()
@@ -854,3 +903,25 @@ else:
             st.info("No projects available to delete")
     with tabs[6]:
         manage_files()
+    with tabs[7]:
+    st.subheader("👨‍🔧 Input Engineer Go A Head")
+    with st.form(key="form_goahead"):
+        nama_pic = st.text_input("Nama PIC*", help="Masukkan nama engineer yang dinas")
+        tanggal_berangkat = st.date_input("Tanggal Berangkat*", format="YYYY-MM-DD")
+        tanggal_pulang = st.date_input("Estimasi Tanggal Pulang*", format="YYYY-MM-DD")
+        submitted = st.form_submit_button("💾 Simpan Data Engineer Go A Head")
+        if submitted:
+            if nama_pic and tanggal_berangkat and tanggal_pulang:
+                add_engineer_goahead(
+                    nama_pic,
+                    tanggal_berangkat.strftime("%Y-%m-%d"),
+                    tanggal_pulang.strftime("%Y-%m-%d")
+                )
+                st.success("✅ Data Engineer Go A Head berhasil disimpan!")
+                st.rerun()
+            else:
+                st.error("⚠️ Semua field harus diisi!")
+    # Tampilkan data terakhir
+    latest_info = get_latest_engineer_goahead()
+    if latest_info:
+        st.info(f"PIC terakhir: **{latest_info[0]}** | Berangkat: {latest_info[1]} | Estimasi Pulang: {latest_info[2]}")
