@@ -61,107 +61,97 @@ def get_available_years():
         return [row[0] for row in cursor.fetchall()]
 
 
-st.markdown("""
-<style>
-/* Background and app container */
-.stApp {
-    background-color: #f5f7fa;
-}
+# Pilihan mode UI
+mode = st.sidebar.radio("🌗 Pilih Mode Tampilan", ["Light Mode", "Dark Mode"])
 
-/* Header and Title */
-h1, h2, h3, .stTitle, .stHeader {
-    color: #22223B !important;
-    background: linear-gradient(90deg, #4f8cff 0%, #48c9b0 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-weight: bold;
-}
-
-/* Subheader, tabs, expander */
-.stSubheader, .stTabs, .stExpander {
-    color: #22223B !important;
-    font-weight: 600;
-}
-
-/* Tabs selected */
-.stTabs [aria-selected="true"] {
-    background-color: #48c9b0 !important;
-    color: #fff !important;
-    font-weight: bold !important;
-    border-radius: 10px 10px 0 0;
-}
-
-/* Expander */
-.stExpander {
-    background: #eaf6fb !important;
-    border: 2px solid #4f8cff !important;
-    border-radius: 8px !important;
-}
-
-/* Button */
-.stButton > button {
-    background: linear-gradient(90deg, #4f8cff 0%, #48c9b0 100%);
-    color: #fff !important;
-    font-weight: bold !important;
-    border-radius: 8px !important;
-    border: none !important;
-    padding: 0.6em 2em !important;
-    margin-bottom: 6px;
-    font-size: 1.1em !important;
-    transition: box-shadow 0.2s;
-}
-.stButton > button:hover {
-    box-shadow: 0 0 8px #48c9b0, 0 0 14px #4f8cff;
-}
-
-/* Progress bar */
-.stProgress > div > div {
-    background: linear-gradient(90deg,#4f8cff 20%,#48c9b0 100%) !important;
-}
-
-/* Container */
-.stContainer {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px #4f8cff33;
-    padding: 10px;
-    margin-bottom: 8px;
-}
-
-/* Download and file buttons */
-.stDownloadButton > button, .stDownloadButton > a {
-    background: #4f8cff !important;
-    color: #fff !important;
-    border-radius: 7px !important;
-    font-weight: bold !important;
-    padding: 0.5em 2em !important;
-}
-.stDownloadButton > button:hover, .stDownloadButton > a:hover {
-    background: #22223B !important;
-}
-
-/* Info, Warning, Success */
-.stAlert {
-    border-radius: 8px !important;
-    font-size: 1.05em !important;
-}
-.stAlert-success {
-    background: #e8ffe8 !important;
-    color: #1a7e32 !important;
-    border: 2px solid #48c9b0 !important;
-}
-.stAlert-warning {
-    background: #fffbe8 !important;
-    color: #d48806 !important;
-    border: 2px solid #f2c94c !important;
-}
-.stAlert-error {
-    background: #ffe8e8 !important;
-    color: #c0392b !important;
-    border: 2px solid #e74c3c !important;
-}
-</style>
-""", unsafe_allow_html=True)
+if mode == "Light Mode":
+    st.markdown("""
+    <style>
+    .stApp { background-color: #fff !important; color: #111 !important; }
+    h1, h2, h3, h4, h5, h6,
+    .stTitle, .stHeader, .stSubheader, .stTabs, .stExpander,
+    body, p, div, span, label, .stMarkdown, .stCaption, .stText {
+        color: #111 !important;
+        background: none !important;
+        font-weight: bold;
+    }
+    .stButton > button, .stDownloadButton > button, .stDownloadButton > a {
+        background: #fff !important;
+        color: #111 !important;
+        border-radius: 8px !important;
+        border: 2px solid #111 !important;
+        font-weight: bold !important;
+        padding: 0.5em 2em !important;
+        margin-bottom: 6px;
+        font-size: 1.05em !important;
+        transition: background 0.2s, color 0.2s;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover, .stDownloadButton > a:hover {
+        background: #111 !important;
+        color: #fff !important;
+    }
+    .stExpander, .stContainer {
+        background: #fff !important;
+        color: #111 !important;
+        border-radius: 10px !important;
+        border: 1px solid #e0e0e0 !important;
+    }
+    .stProgress > div > div {
+        background: #111 !important;
+    }
+    .stAlert, .stAlert-success, .stAlert-warning, .stAlert-error {
+        background: #fff !important;
+        color: #111 !important;
+        border-radius: 8px !important;
+        border: 2px solid #111 !important;
+        font-size: 1.05em !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+else:  # Dark Mode
+    st.markdown("""
+    <style>
+    .stApp { background-color: #181818 !important; color: #fff !important; }
+    h1, h2, h3, h4, h5, h6,
+    .stTitle, .stHeader, .stSubheader, .stTabs, .stExpander,
+    body, p, div, span, label, .stMarkdown, .stCaption, .stText {
+        color: #fff !important;
+        background: none !important;
+        font-weight: bold;
+    }
+    .stButton > button, .stDownloadButton > button, .stDownloadButton > a {
+        background: #22223B !important;
+        color: #fff !important;
+        border-radius: 8px !important;
+        border: 2px solid #fff !important;
+        font-weight: bold !important;
+        padding: 0.5em 2em !important;
+        margin-bottom: 6px;
+        font-size: 1.05em !important;
+        transition: background 0.2s, color 0.2s;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover, .stDownloadButton > a:hover {
+        background: #fff !important;
+        color: #22223B !important;
+    }
+    .stExpander, .stContainer {
+        background: #232323 !important;
+        color: #fff !important;
+        border-radius: 10px !important;
+        border: 1px solid #4f8cff !important;
+    }
+    .stProgress > div > div {
+        background: #48c9b0 !important;
+    }
+    .stAlert, .stAlert-success, .stAlert-warning, .stAlert-error {
+        background: #232323 !important;
+        color: #fff !important;
+        border-radius: 8px !important;
+        border: 2px solid #fff !important;
+        font-size: 1.05em !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 st.set_page_config(page_title="CISTECH", page_icon="📊", layout="wide")
 
