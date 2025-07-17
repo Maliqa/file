@@ -463,6 +463,62 @@ def manage_files(project_id=None):
     with tab2:
         st.markdown("### 📂 Upload Additional Files")
         # Code for uploading additional files goes here...
+        custom_category = st.text_input("Custom File Name*",
+					placeholder="e.g. Meeting Notes, Contract Draft",
+                                      help="Nama deskriptif untuk file ini")
+        
+        uploaded_custom_file = st.file_uploader(
+            f"Choose additional file for {selected_project_name} (Max 10MB)",
+            type=[
+                'pdf', 'doc', 'docx', 'xls', 'xlsx', 
+                'jpg', 'jpeg', 'png', 'txt', 'ppt', 'pptx'
+            ],
+            key=f"additional_{selected_project_id}"
+        )
+        
+        if st.button("⬆️ Upload Additional File"):
+            if not custom_category:
+                st.error("Please enter a file name")
+            elif not uploaded_custom_file:
+                st.error("Please select a file")
+            else:
+                file_name = uploaded_custom_file.name.lower()
+                file_extension = os.path.splitext(file_name)[1]
+                
+                if file_extension in BLOCKED_EXTENSIONS:
+                    st.error(f"⚠️ File type {file_extension} is not allowed for security reasons")
+                elif uploaded_custom_file.size > 10 * 1024 * 1024:
+                    st.error("File size exceeds 10MB limit")
+                else:
+                    directory = f"files/project_{selected_project_id}/additional/"
+                    os.makedirs(directory, exist_ok=True)
+                    
+                    safe_filename = "".join(
+                        c for c in uploaded_custom_file.name 
+                        if c.isalnum() or c in ('.', '-', '_')
+                    ).rstrip()
+                    
+                    filepath = os.path.join(directory, safe_filename)
+                    
+                    with open(filepath, "wb") as f:
+                        f.write(uploaded_custom_file.getbuffer())
+                    
+                    with sqlite3.connect('project_management.db') as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            INSERT INTO project_files 
+                            (project_id, file_name, file_path, file_category) 
+                            VALUES (?, ?, ?, ?)
+                        """, (
+                            selected_project_id, 
+                            safe_filename, 
+                            filepath, 
+                            f"Additional: {custom_category}"
+                        ))
+                        conn.commit()
+                    
+                    st.success(f"✅ File '{custom_category}' uploaded successfully!")
+                    st.rerun()
 
         st.markdown("### 📌 Existing Additional Files")
         with sqlite3.connect('project_management.db') as conn:
