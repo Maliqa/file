@@ -60,9 +60,23 @@ def get_available_years():
         """)
         return [row[0] for row in cursor.fetchall()]
 
+# INIT DB & SESSION STATE
+init_db()
+if 'show_edit_form' not in st.session_state:
+    st.session_state['show_edit_form'] = False
+if 'edit_project_id' not in st.session_state:
+    st.session_state['edit_project_id'] = None
+if 'view_files_project' not in st.session_state:
+    st.session_state.view_files_project = None
+if 'mode_theme' not in st.session_state:
+    st.session_state['mode_theme'] = "Dark Mode"
 
 # Pilihan mode UI
-mode = st.sidebar.radio("🌗 Pilih Mode Tampilan", ["Light Mode", "Dark Mode"])
+if 'mode_theme' not in st.session_state:
+    st.session_state['mode_theme'] = "Dark Mode"
+
+mode = st.sidebar.radio("🌗 Pilih Mode Tampilan", ["Light Mode", "Dark Mode"], index=1 if st.session_state['mode_theme'] == "Dark Mode" else 0)
+st.session_state['mode_theme'] = mode
 
 if mode == "Light Mode":
     st.markdown("""
@@ -147,13 +161,38 @@ if mode == "Light Mode":
         box-shadow: 0 2px 12px #48c9b044;
         margin-bottom: 8px;
     }
+    /* Add Project Form Style */
+    #add_project_form {
+        background: linear-gradient(90deg,#eaf6fb 70%,#48c9b0 100%);
+        border-radius: 18px;
+        box-shadow: 0 4px 16px #48c9b044;
+        padding: 32px 24px;
+        margin-bottom: 32px;
+        border: 2px solid #48c9b0;
+    }
+    .stForm label, .stForm input, .stForm select, .stForm textarea {
+        color: #22223B !important;
+        font-weight: 600 !important;
+        font-size: 1.02em !important;
+        background: #fff !important;
+        border-radius: 8px;
+    }
+    .stForm .stButton > button {
+        background: #48c9b0 !important;
+        color: #fff !important;
+        font-weight: 700 !important;
+        border-radius: 8px !important;
+        border: 2px solid #22223B !important;
+        box-shadow: 0 2px 8px #48c9b044;
+        font-size: 1em !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 	
 st.set_page_config(page_title="CISTECH", page_icon="📊", layout="wide")
 
 # HEADER
-st.image("cistech.png", width=600)
+st.image("cistech.png", width=545)
 st.title("Dashboard Mapping Project TSCM")
 st.title("ISO 9001-2015")
 
