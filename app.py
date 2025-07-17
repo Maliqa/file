@@ -67,81 +67,73 @@ mode = st.sidebar.radio("🌗 Pilih Mode Tampilan", ["Light Mode", "Dark Mode"])
 if mode == "Light Mode":
     st.markdown("""
     <style>
-    .stApp { background-color: #fff !important; color: #111 !important; }
+    .stApp { background-color: #f6fbfc !important; color: #22223B !important; }
     /* Hover transparan tab */
     .stTabs [role="tab"]:hover {
-        background: rgba(0,0,0,0.08) !important;
-        transition: background 0.2s;
+        background: rgba(72,201,176,0.15) !important;
+        color: #22223B !important;
+        transition: background 0.2s, color 0.2s;
     }
     /* Aktif tab */
     .stTabs [aria-selected="true"] {
-        background: #e0e0e0 !important;
-        color: #111 !important;
-        font-weight: bold !important;
-        border-radius: 10px 10px 0 0;
-    }
-    /* Tombol kecil di expander board */
-    .stButton > button[kecil] {
-        font-size: 0.88em !important;
-        padding: 0.35em 1.2em !important;
-        min-height: 32px !important;
-        border-radius: 6px !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-else:  # Dark Mode
-    st.markdown("""
-    <style>
-    .stApp { background-color: #181818 !important; color: #fff !important; }
-    /* Hover transparan tab */
-    .stTabs [role="tab"]:hover {
-        background: rgba(255,255,255,0.10) !important;
-        transition: background 0.2s;
-    }
-    /* Aktif tab */
-    .stTabs [aria-selected="true"] {
-        background: #22223B !important;
+        background: linear-gradient(90deg,#48c9b0 60%,#eaf6fb 100%) !important;
         color: #fff !important;
         font-weight: bold !important;
-        border-radius: 10px 10px 0 0;
+        border-radius: 12px 12px 0 0 !important;
+        box-shadow: 0 2px 12px #48c9b044;
+        letter-spacing: 0.5px;
+    }
+    .stTabs [role="tab"] {
+        font-size: 1.08em !important;
+        font-weight: 600 !important;
+        color: #22223B !important;
+        background: #eaf6fb !important;
+        margin-right: 3px !important;
+        border-radius: 12px 12px 0 0 !important;
+        transition: background 0.2s, color 0.2s;
     }
     /* Tombol kecil di expander board */
-    .stButton > button[kecil] {
-        font-size: 0.83em !important;
+    .stExpander .stButton > button {
+        font-size: 0.93em !important;
         padding: 0.35em 1.2em !important;
         min-height: 32px !important;
         border-radius: 6px !important;
+        background: #eaf6fb !important;
+        color: #22223B !important;
+        border: 1.5px solid #48c9b0 !important;
+        font-weight: 500 !important;
+    }
+    .stExpander .stButton > button:hover {
+        background: #48c9b0 !important;
+        color: #fff !important;
+        border-color: #22223B !important;
+    }
+    /* Expander box */
+    .stExpander {
+        background: #f6fbfc !important;
+        border: 1.5px solid #48c9b0 !important;
+        border-radius: 16px !important;
+        box-shadow: 0 2px 16px #48c9b022;
+    }
+    /* Progress bar warna tosca */
+    .stProgress > div > div {
+        background: linear-gradient(90deg,#48c9b0 60%,#eaf6fb 100%) !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-if mode == "Light Mode":
     st.markdown("""
     <style>
     .upload-doc-title {
         font-size: 1.18em;
         font-weight: 700;
-        color: #22223B !important;
-        background: #eaf6fb;
-        padding: 6px 16px;
-        border-radius: 6px;
+        color: #fff !important;
+        background: linear-gradient(90deg,#48c9b0 80%,#eaf6fb 100%);
+        padding: 8px 24px;
+        border-radius: 8px;
         display: inline-block;
         letter-spacing: 0.5px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <style>
-    .upload-doc-title {
-        font-size: 1.18em;
-        font-weight: 700;
-        color: #48c9b0 !important;
-        background: #232323;
-        padding: 6px 16px;
-        border-radius: 6px;
-        display: inline-block;
-        letter-spacing: 0.5px;
+        box-shadow: 0 2px 12px #48c9b044;
     }
     </style>
     """, unsafe_allow_html=True)
