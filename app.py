@@ -68,13 +68,41 @@ if mode == "Light Mode":
     st.markdown("""
     <style>
     .stApp { background-color: #f6fbfc !important; color: #22223B !important; }
-    /* Hover transparan tab */
+    
+    /* Buttons (Download, Back to Board, etc) */
+    .stButton > button, .stDownloadButton > button, .stDownloadButton > a {
+        background: linear-gradient(90deg,#eaf6fb 60%,#48c9b0 100%) !important;
+        color: #22223B !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        border: 2px solid #48c9b0 !important;
+        font-size: 1em !important;
+        box-shadow: 0 2px 8px #48c9b044;
+        transition: background 0.2s, color 0.2s;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover, .stDownloadButton > a:hover {
+        background: #48c9b0 !important;
+        color: #fff !important;
+        border-color: #22223B !important;
+    }
+    
+    /* Expander & Progress Bar */
+    .stExpander {
+        background: #f6fbfc !important;
+        border: 1.5px solid #48c9b0 !important;
+        border-radius: 16px !important;
+        box-shadow: 0 2px 16px #48c9b022;
+    }
+    .stProgress > div > div {
+        background: linear-gradient(90deg,#48c9b0 60%,#eaf6fb 100%) !important;
+    }
+
+    /* Tab Styling */
     .stTabs [role="tab"]:hover {
         background: rgba(72,201,176,0.15) !important;
         color: #22223B !important;
         transition: background 0.2s, color 0.2s;
     }
-    /* Aktif tab */
     .stTabs [aria-selected="true"] {
         background: linear-gradient(90deg,#48c9b0 60%,#eaf6fb 100%) !important;
         color: #fff !important;
@@ -92,38 +120,21 @@ if mode == "Light Mode":
         border-radius: 12px 12px 0 0 !important;
         transition: background 0.2s, color 0.2s;
     }
-    /* Tombol kecil di expander board */
-    .stExpander .stButton > button {
-        font-size: 0.93em !important;
-        padding: 0.35em 1.2em !important;
-        min-height: 32px !important;
-        border-radius: 6px !important;
-        background: #eaf6fb !important;
-        color: #22223B !important;
-        border: 1.5px solid #48c9b0 !important;
-        font-weight: 500 !important;
-    }
-    .stExpander .stButton > button:hover {
-        background: #48c9b0 !important;
-        color: #fff !important;
-        border-color: #22223B !important;
-    }
-    /* Expander box */
-    .stExpander {
-        background: #f6fbfc !important;
-        border: 1.5px solid #48c9b0 !important;
-        border-radius: 16px !important;
-        box-shadow: 0 2px 16px #48c9b022;
-    }
-    /* Progress bar warna tosca */
-    .stProgress > div > div {
-        background: linear-gradient(90deg,#48c9b0 60%,#eaf6fb 100%) !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <style>
+    /* FileUploader Label */
+    .stFileUploader label {
+        color: #22223B !important;
+        font-weight: 600 !important;
+        font-size: 1em !important;
+        background: #eaf6fb !important;
+        border-radius: 8px;
+        padding: 4px 12px;
+        margin-bottom: 8px;
+        display: inline-block;
+        box-shadow: 0 2px 6px #48c9b022;
+    }
+
+    /* Upload Required Documents Title (above uploader) */
     .upload-doc-title {
         font-size: 1.18em;
         font-weight: 700;
@@ -134,10 +145,11 @@ if mode == "Light Mode":
         display: inline-block;
         letter-spacing: 0.5px;
         box-shadow: 0 2px 12px #48c9b044;
+        margin-bottom: 8px;
     }
     </style>
     """, unsafe_allow_html=True)
-
+	
 st.set_page_config(page_title="CISTECH", page_icon="📊", layout="wide")
 
 # HEADER
@@ -314,7 +326,7 @@ def display_kanban(projects):
                             "✏️ Edit Project", 
                             key=f"edit_btn_{project[0]}",
                             use_container_width=True
-			    help=None
+			    
                         ):
                             st.session_state['edit_project_id'] = project[0]
                             st.session_state['show_edit_form'] = True
@@ -324,7 +336,7 @@ def display_kanban(projects):
                             "📂 View Files",
                             key=f"view_files_{project[0]}",
                             use_container_width=True
-			    help=None
+			    
                         ):
                             st.session_state.view_files_project = project[0]
                             st.rerun()
