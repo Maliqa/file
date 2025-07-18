@@ -83,7 +83,9 @@ if 'view_files_project' not in st.session_state:
 if 'mode_theme' not in st.session_state:
     st.session_state['mode_theme'] = "Dark Mode"
 if 'active_tab' not in st.session_state:
-    st.session_state['active_tab'] = "📋 Board"  # Default to Board tab
+    st.session_state['active_tab'] = "📋 Board"
+if 'force_tab' not in st.session_state:
+    st.session_state['force_tab'] = None
 
 # Pilihan mode UI
 mode = st.sidebar.radio("🌗 Pilih Mode Tampilan", ["Light Mode", "Dark Mode"], index=1 if st.session_state['mode_theme'] == "Dark Mode" else 0)
@@ -269,7 +271,7 @@ def edit_project(project_id):
         return
     if st.button("← Back to Board"):
         st.session_state['show_edit_form'] = False
-        st.session_state['active_tab'] = "📋 Board"  # Set active tab to Board
+        st.session_state['force_tab'] = "📋 Board"
         st.rerun()
     with st.form(key=f'edit_project_form_{project_id}'):
         st.subheader(f"✏️ Editing: {project[1]}")
@@ -328,7 +330,7 @@ def delete_project(project_id):
 
 # BOARD: PROJECT/SERVICE TAB
 def view_projects_kanban():
-    st.session_state['active_tab'] = "📋 Board"  # Set active tab to Board
+    st.session_state['active_tab'] = "📋 Board"
     st.subheader("📋 Project Board", divider="blue")
     available_years = get_available_years()
     if not available_years:
@@ -359,7 +361,7 @@ def view_projects_kanban():
         projects = cursor.fetchall()
     if search_term:
         projects = [p for p in projects if search_term.lower() in p[1].lower() or search_term.lower() in p[2].lower()]
-    # Pisahin PROJECT/SERVICE
+    
     projects_only = [p for p in projects if p[3] == "PROJECT"]
     services_only = [p for p in projects if p[3] == "SERVICE"]
     tab_project, tab_service = st.tabs(["📁 PROJECT", "🛠️ SERVICE"])
@@ -401,7 +403,7 @@ def display_kanban(projects):
                             use_container_width=True
                         ):
                             st.session_state.view_files_project = project[0]
-                            st.session_state['active_tab'] = "📂 Manage Files"  # Set active tab to Manage Files
+                            st.session_state['force_tab'] = "📂 Manage Files"
                             st.rerun()
                     st.write(f"**Customer:** {project[2]}")
                     st.write(f"**Category:** {project[3]}")
@@ -419,7 +421,7 @@ def display_kanban(projects):
 
 # TIMELINE
 def view_timeline():
-    st.session_state['active_tab'] = "📅 Timeline"  # Set active tab to Timeline
+    st.session_state['active_tab'] = "📅 Timeline"
     st.subheader("📅 Monthly Project Timeline", divider="blue")
     current_date = datetime.now()
     months = ["January", "February", "March", "April", "May", "June",
@@ -467,7 +469,7 @@ def view_timeline():
 
 # MANAGE FILES
 def manage_files(project_id=None):
-    st.session_state['active_tab'] = "📂 Manage Files"  # Set active tab to Manage Files
+    st.session_state['active_tab'] = "📂 Manage Files"
     BLOCKED_EXTENSIONS = ['.php', '.exe', '.bat', '.sh', '.js', '.py', '.jar']
     if project_id is None:
         available_years = get_available_years()
@@ -497,7 +499,7 @@ def manage_files(project_id=None):
         st.write(f"Viewing files for: **{selected_project_name}**")
         if st.button("← Back to Board"):
             st.session_state.view_files_project = None
-            st.session_state['active_tab'] = "📋 Board"  # Set active tab to Board
+            st.session_state['force_tab'] = "📋 Board"
             st.rerun()
     tab1, tab2, tab_preview = st.tabs(["📋 Required Documents", "📂 Additional Files", "📑 File Preview"])
     with tab1:
@@ -768,7 +770,7 @@ def manage_files(project_id=None):
                             st.warning("Preview not available for this file type")
 
 def dashboard_line_chart():
-    st.session_state['active_tab'] = "📈 Grafik Proyek"  # Set active tab to Grafik Proyek
+    st.session_state['active_tab'] = "📈 Grafik Proyek"
     st.header("📈 Statistik Proyek: Line Chart Per Bulan & Per Tahun")
 
     # Ambil data dari database
@@ -819,66 +821,80 @@ def dashboard_line_chart():
     fig_tahun.update_layout(xaxis_title="Tahun", yaxis_title="Jumlah Proyek")
     st.plotly_chart(fig_tahun, use_container_width=True)
 
-# MAIN LOGIC
-if st.session_state['show_edit_form']:
-    edit_project(st.session_state['edit_project_id'])
-elif st.session_state.view_files_project:
-    project_id = st.session_state.view_files_project
-    project_details = get_project_details(project_id)
-    if project_details:
-        st.subheader(f"📂 Files for: {project_details[1]}")
-        manage_files(project_id=project_id)
+# MAIN APP FUNCTION
+def main_app():
+    # Handle back navigation first
+    if st.session_state.get('force_tab'):
+        st.session_state['active_tab'] = st.session_state['force_tab']
+        st.session_state['force_tab'] = None
+        st.rerun()
+
+    if st.session_state['show_edit_form']:
+        edit_project(st.session_state['edit_project_id'])
+    elif st.session_state.view_files_project:
+        project_id = st.session_state.view_files_project
+        project_details = get_project_details(project_id)
+        if project_details:
+            st.subheader(f"📂 Files for: {project_details[1]}")
+            manage_files(project_id=project_id)
+        else:
+            st.error("Project not found")
+            st.session_state.view_files_project = None
     else:
-        st.error("Project not found")
-        st.session_state.view_files_project = None
-else:
-    tab_names = [
-        "📈 Grafik Proyek",
-        "📋 Board", 
-        "📅 Timeline",
-        "➕ Add Project",
-        "✏️ Edit Project",
-        "🗑️ Delete Project",
-        "📂 Manage Files"
-    ]
-    
-    # Buat tabs
-    tabs = st.tabs(tab_names)
-    
-    with tabs[0]:
-        dashboard_line_chart()
-    
-    with tabs[1]:
-        view_projects_kanban()
-    
-    with tabs[2]:
-        view_timeline()
-    
-    with tabs[3]:
-        st.session_state['active_tab'] = tab_names[3]
-        add_project()
-    
-    with tabs[4]:
-        st.session_state['active_tab'] = tab_names[4]
-        st.subheader("✏️ Edit Project")
-        projects = get_all_projects()
-        if projects:
-            project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
-            selected_project = st.selectbox("Select Project to Edit", list(project_options.keys()))
-            edit_project(project_options[selected_project])
-        else:
-            st.info("No projects available to edit")
-    
-    with tabs[5]:
-        st.session_state['active_tab'] = tab_names[5]
-        st.subheader("🗑️ Delete Project")
-        projects = get_all_projects()
-        if projects:
-            project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
-            selected_project = st.selectbox("Select Project to Delete", list(project_options.keys()))
-            delete_project(project_options[selected_project])
-        else:
-            st.info("No projects available to delete")
-    
-    with tabs[6]:
-        manage_files()
+        tab_names = [
+            "📈 Grafik Proyek",
+            "📋 Board", 
+            "📅 Timeline",
+            "➕ Add Project",
+            "✏️ Edit Project",
+            "🗑️ Delete Project",
+            "📂 Manage Files"
+        ]
+        
+        # Create tabs
+        tabs = st.tabs(tab_names)
+        
+        # Track which tab should be active
+        active_index = tab_names.index(st.session_state['active_tab']) if st.session_state['active_tab'] in tab_names else 1
+        
+        # This forces the correct tab to be active
+        tabs[active_index].write("")
+        
+        with tabs[0]:
+            dashboard_line_chart()
+        
+        with tabs[1]:
+            view_projects_kanban()
+        
+        with tabs[2]:
+            view_timeline()
+        
+        with tabs[3]:
+            add_project()
+        
+        with tabs[4]:
+            st.subheader("✏️ Edit Project")
+            projects = get_all_projects()
+            if projects:
+                project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
+                selected_project = st.selectbox("Select Project to Edit", list(project_options.keys()))
+                edit_project(project_options[selected_project])
+            else:
+                st.info("No projects available to edit")
+        
+        with tabs[5]:
+            st.subheader("🗑️ Delete Project")
+            projects = get_all_projects()
+            if projects:
+                project_options = {f"{p[1]} - {p[2]}": p[0] for p in projects}
+                selected_project = st.selectbox("Select Project to Delete", list(project_options.keys()))
+                delete_project(project_options[selected_project])
+            else:
+                st.info("No projects available to delete")
+        
+        with tabs[6]:
+            manage_files()
+
+# RUN THE APP
+if __name__ == "__main__":
+    main_app()
