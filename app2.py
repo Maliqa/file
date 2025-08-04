@@ -769,58 +769,6 @@ def manage_files(project_id=None):
                         else:
                             st.warning("Preview not available for this file type")
 
-def dashboard_line_chart():
-    st.session_state['active_tab'] = "📈 Grafik Proyek"
-    st.header("📈 Statistik Proyek: Line Chart Per Bulan & Per Tahun")
-
-    # Ambil data dari database
-    with sqlite3.connect('project_management.db') as conn:
-        df = pd.read_sql_query("SELECT * FROM projects", conn)
-
-    if df.empty:
-        st.info("Belum ada data proyek.")
-        return
-
-    # Pastikan date_start tipe datetime
-    df['date_start'] = pd.to_datetime(df['date_start'])
-
-    # ---- Grafik Per Bulan (Tahun Terpilih) ----
-    st.subheader("Jumlah Proyek Per Bulan (Tahun Terpilih)")
-    df['year'] = df['date_start'].dt.year
-    df['month'] = df['date_start'].dt.month
-
-    tahun_opsi = sorted(df['year'].unique())
-    tahun_pilih = st.selectbox("Pilih Tahun", tahun_opsi, index=len(tahun_opsi)-1)
-
-    df_tahun = df[df['year'] == tahun_pilih]
-    per_bulan = df_tahun.groupby('month').size().reset_index(name='jumlah')
-    bulan_nama = [
-        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-    ]
-    per_bulan['Bulan'] = per_bulan['month'].apply(lambda x: bulan_nama[x-1])
-
-    fig_bulan = px.line(
-        per_bulan, 
-        x='Bulan', y='jumlah', 
-        markers=True,
-        title=f"Jumlah Proyek per Bulan di Tahun {tahun_pilih}"
-    )
-    fig_bulan.update_layout(xaxis_title="Bulan", yaxis_title="Jumlah Proyek")
-    st.plotly_chart(fig_bulan, use_container_width=True)
-
-    st.subheader("Jumlah Proyek Per Tahun")
-    per_tahun = df.groupby('year').size().reset_index(name='jumlah')
-
-    fig_tahun = px.line(
-        per_tahun,
-        x='year', y='jumlah',
-        markers=True,
-        title="Jumlah Proyek per Tahun"
-    )
-    fig_tahun.update_layout(xaxis_title="Tahun", yaxis_title="Jumlah Proyek")
-    st.plotly_chart(fig_tahun, use_container_width=True)
-
 # MAIN APP FUNCTION
 def main_app():
     # Handle back navigation first
@@ -842,7 +790,6 @@ def main_app():
             st.session_state.view_files_project = None
     else:
         tab_names = [
-            "📈 Grafik Proyek",
             "📋 Board", 
             "📅 Timeline",
             "➕ Add Project",
@@ -855,24 +802,21 @@ def main_app():
         tabs = st.tabs(tab_names)
         
         # Track which tab should be active
-        active_index = tab_names.index(st.session_state['active_tab']) if st.session_state['active_tab'] in tab_names else 1
+        active_index = tab_names.index(st.session_state['active_tab']) if st.session_state['active_tab'] in tab_names else 0
         
         # This forces the correct tab to be active
         tabs[active_index].write("")
         
         with tabs[0]:
-            dashboard_line_chart()
-        
-        with tabs[1]:
             view_projects_kanban()
         
-        with tabs[2]:
+        with tabs[1]:
             view_timeline()
         
-        with tabs[3]:
+        with tabs[2]:
             add_project()
         
-        with tabs[4]:
+        with tabs[3]:
             st.subheader("✏️ Edit Project")
             projects = get_all_projects()
             if projects:
@@ -882,7 +826,7 @@ def main_app():
             else:
                 st.info("No projects available to edit")
         
-        with tabs[5]:
+        with tabs[4]:
             st.subheader("🗑️ Delete Project")
             projects = get_all_projects()
             if projects:
@@ -892,7 +836,7 @@ def main_app():
             else:
                 st.info("No projects available to delete")
         
-        with tabs[6]:
+        with tabs[5]:
             manage_files()
 
 # RUN THE APP
