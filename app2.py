@@ -711,9 +711,12 @@ def manage_files(project_id=None):
                     col1, col2, col3, col4 = st.columns([4, 1, 1, 1])
                     with col1:
                         st.markdown(f"**Type:** {file_category}")
-                        st.markdown(f"**Size:** {os.path.getsize(file_path) / 1024:.2f} KB")
+                        if os.path.exists(file_path):
+                            st.markdown(f"**Size:** {os.path.getsize(file_path) / 1024:.2f} KB")
+                        else:
+                            st.markdown("**Size:** File missing")
                     with col2:
-                        if file_ext in ['.pdf', '.jpg', '.jpeg', '.png', '.txt']:
+                        if file_ext in ['.pdf', '.jpg', '.jpeg', '.png', '.txt', '.xls', '.xlsx']:
                             if st.button("👁️ Preview", key=f"preview_{file_id}"):
                                 st.session_state['preview_file'] = file_path
                     with col3:
@@ -744,6 +747,7 @@ def manage_files(project_id=None):
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Error: {str(e)}")
+                    # PREVIEW BLOCK (sudah support Excel)
                     if st.session_state.get('preview_file') == file_path:
                         st.markdown("---")
                         st.markdown("### File Preview")
@@ -766,6 +770,12 @@ def manage_files(project_id=None):
                         elif file_ext == '.txt':
                             with open(file_path, "r") as f:
                                 st.text_area("Content", f.read(), height=200)
+                        elif file_ext in ['.xls', '.xlsx']:
+                            try:
+                                df = pd.read_excel(file_path)
+                                st.dataframe(df)
+                            except Exception as e:
+                                st.error(f"Gagal preview Excel: {str(e)}")
                         else:
                             st.warning("Preview not available for this file type")
 
